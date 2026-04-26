@@ -11,7 +11,7 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "Loop | استرداد الأدوية، استدامة الأثر",
+  title: "Loop | دائرةُ الدواء، دوامُ الأثر",
   description:
     "Loop — منصة استرداد الأدوية المنزلية في المملكة العربية السعودية. استرجع أدويتك المنتهية أو غير المستخدمة في أقرب صيدلية شريكة واكسب نقاطًا ومكافآت.",
   applicationName: "Loop",

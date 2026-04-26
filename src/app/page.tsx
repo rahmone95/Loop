@@ -11,23 +11,23 @@ export default function SplashPage() {
       <div className="absolute inset-0 bg-loop-gradient" />
       <div className="absolute inset-0 opacity-[0.06] grid-bg" />
 
-      <div className="relative z-10 flex min-h-[100dvh] flex-col items-center justify-center px-6 text-center">
+      <div className="relative z-10 flex min-h-[100dvh] flex-col items-center justify-center px-6 pt-16 md:pt-24 text-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="origin-center scale-90 sm:scale-100 md:scale-125"
+          className="origin-center scale-95 sm:scale-110 md:scale-150"
         >
-          <LoopLogo variant="wordmark-white" size={88} />
+          <LoopLogo variant="wordmark-white" size={100} />
         </motion.div>
 
         <motion.h1
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.25 }}
-          className="mt-12 text-3xl md:text-4xl font-extrabold text-white text-balance leading-tight"
+          className="mt-10 md:mt-14 text-3xl md:text-4xl font-extrabold text-white text-balance leading-tight"
         >
-          استرداد الأدوية، استدامة الأثر
+          دائرةُ الدواء، دوامُ الأثر
         </motion.h1>
 
         <motion.p
@@ -37,14 +37,14 @@ export default function SplashPage() {
           className="mt-3 text-sm md:text-base italic text-loop-green-100"
           dir="ltr"
         >
-          Recover medicine. Sustain impact.
+          The loop of medicine. The endurance of impact.
         </motion.p>
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.7 }}
-          className="mt-14 flex flex-col items-center gap-4"
+          className="mt-10 md:mt-12 flex flex-col items-center gap-4"
         >
           <Link
             href="/onboarding"

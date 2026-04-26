@@ -145,7 +145,7 @@ function LoopWordmark({
   return (
     <svg
       height={height}
-      viewBox="0 0 200 70"
+      viewBox="0 0 200 80"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-label="Loop"
@@ -160,48 +160,38 @@ function LoopWordmark({
 
       {/* L */}
       <path
-        d="M 8 8 L 8 58 L 36 58"
+        d="M 8 8 L 8 58 L 38 58"
         stroke={blue}
-        strokeWidth="11"
+        strokeWidth="10"
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"
       />
 
-      {/* o - first */}
-      <circle
-        cx="68"
-        cy="42"
-        r="16"
+      {/* oo merged as infinity */}
+      <path
+        d="M 56 42 C 56 24, 84 24, 90 42 C 96 60, 124 60, 124 42 C 124 24, 96 24, 90 42 C 84 60, 56 60, 56 42 Z"
         stroke={`url(#${uid}-grad)`}
-        strokeWidth="9"
+        strokeWidth="10"
         fill="none"
-      />
-
-      {/* o - second (overlapping like infinity) */}
-      <circle
-        cx="104"
-        cy="42"
-        r="16"
-        stroke={`url(#${uid}-grad)`}
-        strokeWidth="9"
-        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
 
       {/* p - stem + bowl */}
       <path
-        d="M 132 26 L 132 68"
+        d="M 144 26 L 144 70"
         stroke={green}
-        strokeWidth="11"
+        strokeWidth="10"
         strokeLinecap="round"
         fill="none"
       />
       <circle
-        cx="148"
+        cx="160"
         cy="42"
         r="16"
         stroke={green}
-        strokeWidth="9"
+        strokeWidth="10"
         fill="none"
       />
     </svg>
