@@ -2,20 +2,23 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { motion } from "framer-motion";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Cloud, Sparkles, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoopLogo } from "@/components/loop-logo";
 import { toArabicDigits } from "@/lib/arabic";
 import { cn } from "@/lib/utils";
+import { startGuestMode, signInAnonymousAndGoLive } from "@/lib/store";
+import { isFirebaseReady } from "@/lib/firebase";
 
 export default function LoginPage() {
   const router = useRouter();
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState(["", "", "", ""]);
+  const [signing, setSigning] = useState(false);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
   const phoneValid = phone.replace(/\D/g, "").length >= 9;
@@ -25,11 +28,31 @@ export default function LoginPage() {
   }, [step]);
 
   useEffect(() => {
-    if (otp.every((d) => d.length === 1)) {
-      const t = setTimeout(() => router.push("/home"), 500);
-      return () => clearTimeout(t);
+    if (otp.every((d) => d.length === 1) && !signing) {
+      setSigning(true);
+      (async () => {
+        try {
+          if (isFirebaseReady) {
+            await signInAnonymousAndGoLive(`+966 ${phone}`);
+            toast.success("تم تسجيل الدخول، بياناتك محفوظة في السحابة");
+          } else {
+            await startGuestMode();
+          }
+          router.push("/home");
+        } catch (err) {
+          console.error(err);
+          toast.error("تعذر تسجيل الدخول، تم تفعيل وضع التجربة");
+          await startGuestMode();
+          router.push("/home");
+        }
+      })();
     }
-  }, [otp, router]);
+  }, [otp, router, signing, phone]);
+
+  async function enterDemo() {
+    await startGuestMode();
+    router.push("/home");
+  }
 
   return (
     <main className="min-h-[100dvh] bg-white">
@@ -83,15 +106,31 @@ export default function LoginPage() {
                 إرسال رمز التحقق
               </Button>
 
+              {isFirebaseReady && (
+                <p className="mt-3 text-[11px] text-center text-loop-muted flex items-center justify-center gap-1">
+                  <Cloud className="size-3.5 text-loop-green-600" />
+                  بياناتك ستُحفظ في السحابة وتزامن مع كل أجهزتك
+                </p>
+              )}
+
               <div className="mt-6 flex items-center gap-3">
                 <div className="h-px flex-1 bg-loop-border" />
                 <span className="text-xs text-loop-muted">أو</span>
                 <div className="h-px flex-1 bg-loop-border" />
               </div>
 
-              <Button asChild variant="outline" width="full" className="mt-6">
-                <Link href="/home">دخول كضيف (للعرض التجريبي)</Link>
+              <Button
+                variant="outline"
+                width="full"
+                className="mt-6"
+                onClick={enterDemo}
+              >
+                <Sparkles className="size-4" />
+                دخول كضيف (للعرض التجريبي)
               </Button>
+              <p className="mt-2 text-[11px] text-center text-loop-muted">
+                وضع التجربة: ٤ أدوية و٢٤٠ نقطة جاهزة، بدون حفظ خارجي
+              </p>
             </motion.div>
           ) : (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
@@ -114,6 +153,7 @@ export default function LoginPage() {
                     inputMode="numeric"
                     maxLength={1}
                     value={digit}
+                    disabled={signing}
                     onChange={(e) => {
                       const v = e.target.value.replace(/\D/g, "");
                       const next = [...otp];
@@ -135,12 +175,21 @@ export default function LoginPage() {
                 ))}
               </div>
 
-              <p className="mt-8 text-center text-sm text-loop-muted">
-                لم يصلك الرمز؟{" "}
-                <button className="text-loop-blue-600 font-semibold">
-                  أعد الإرسال خلال {toArabicDigits(30)} ثانية
-                </button>
-              </p>
+              {signing && (
+                <p className="mt-6 text-center text-sm text-loop-muted flex items-center justify-center gap-2">
+                  <Loader2 className="size-4 animate-spin" />
+                  جاري إنشاء حسابك...
+                </p>
+              )}
+
+              {!signing && (
+                <p className="mt-8 text-center text-sm text-loop-muted">
+                  لم يصلك الرمز؟{" "}
+                  <button className="text-loop-blue-600 font-semibold">
+                    أعد الإرسال خلال {toArabicDigits(30)} ثانية
+                  </button>
+                </p>
+              )}
 
               <p className="mt-6 text-center text-xs text-loop-muted">
                 للعرض التجريبي: أدخل أي ٤ أرقام
