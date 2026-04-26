@@ -491,3 +491,35 @@ export async function signInAnonymousAndGoLive(name?: string) {
   }
   return cred.user;
 }
+
+import {
+  doc as fsDoc,
+  getDoc as fsGetDoc,
+  setDoc as fsSetDoc,
+} from "firebase/firestore";
+
+export async function ensureLiveProfile(
+  uid: string,
+  name: string,
+  phoneE164: string
+): Promise<{ created: boolean }> {
+  const { db } = getFirebase();
+  if (!db) throw new Error("Firestore not ready");
+  const ref = fsDoc(db, "users", uid);
+  const snap = await fsGetDoc(ref);
+  if (snap.exists()) {
+    return { created: false };
+  }
+  const initial = buildLiveInitial(uid, name);
+  initial.user.phone = phoneE164;
+  await fsSetDoc(ref, { ...initial, _createdAt: serverTimestamp() });
+  return { created: true };
+}
+
+export async function liveProfileExists(uid: string): Promise<boolean> {
+  const { db } = getFirebase();
+  if (!db) return false;
+  const ref = fsDoc(db, "users", uid);
+  const snap = await fsGetDoc(ref);
+  return snap.exists();
+}
