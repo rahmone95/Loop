@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, forwardRef, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -19,6 +19,7 @@ import {
   Leaf,
   Users,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import {
   PieChart,
@@ -33,6 +34,7 @@ import {
   Area,
   AreaChart,
 } from "recharts";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoopLogo } from "@/components/loop-logo";
@@ -85,11 +87,69 @@ function AdminDashboardContent() {
   const role = params.get("role") === "sponsor" ? "sponsor" : "sfda";
   const isSponsor = role === "sponsor";
 
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [generating, setGenerating] = useState(false);
+
+  async function handleDownloadPdf() {
+    if (!reportRef.current) return;
+    setGenerating(true);
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const node = reportRef.current;
+      const prevDisplay = node.style.display;
+      node.style.display = "block";
+
+      const canvas = await html2canvas(node, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        windowWidth: 794,
+      });
+
+      node.style.display = prevDisplay;
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "pt",
+        format: "a4",
+        compress: true,
+      });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW;
+      const imgH = (canvas.height * imgW) / canvas.width;
+
+      let heightLeft = imgH;
+      let position = 0;
+      pdf.addImage(imgData, "PNG", 0, position, imgW, imgH, undefined, "FAST");
+      heightLeft -= pageH;
+      while (heightLeft > 0) {
+        position = heightLeft - imgH;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgW, imgH, undefined, "FAST");
+        heightLeft -= pageH;
+      }
+
+      pdf.save(`Loop-ESG-Report-Q1-2026.pdf`);
+      toast.success("تم تنزيل التقرير");
+    } catch (e) {
+      console.error(e);
+      toast.error("تعذّر إنشاء الملف، حاول مجددًا");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   return (
     <div className="min-h-[100dvh] bg-loop-surface-soft flex" dir="rtl">
       <aside className="hidden md:flex w-64 shrink-0 flex-col bg-white border-l border-loop-border">
         <div className="p-5 border-b border-loop-border">
-          <LoopLogo size={32} />
+          <LoopLogo size={36} />
         </div>
         <div className="p-4">
           <div className="rounded-2xl bg-loop-blue-50 p-3 flex items-start gap-2">
@@ -135,7 +195,7 @@ function AdminDashboardContent() {
       </aside>
 
       <div className="md:hidden fixed top-0 inset-x-0 z-30 bg-white border-b border-loop-border h-14 px-4 flex items-center justify-between">
-        <LoopLogo size={28} />
+        <LoopLogo size={32} />
         <Link href="/profile" className="text-xs text-loop-muted">تبديل العرض ←</Link>
       </div>
 
@@ -296,9 +356,19 @@ function AdminDashboardContent() {
               />
             </div>
             <div className="mt-6">
-              <Button variant="default" size="default" className="bg-white text-loop-blue-700 hover:bg-white/90">
-                <Download className="size-5" />
-                تحميل التقرير الكامل (PDF)
+              <Button
+                variant="default"
+                size="default"
+                className="bg-white text-loop-blue-700 hover:bg-white/90"
+                onClick={handleDownloadPdf}
+                disabled={generating}
+              >
+                {generating ? (
+                  <Loader2 className="size-5 animate-spin" />
+                ) : (
+                  <Download className="size-5" />
+                )}
+                {generating ? "جاري الإنشاء..." : "تحميل التقرير الكامل (PDF)"}
               </Button>
             </div>
           </div>
@@ -327,6 +397,15 @@ function AdminDashboardContent() {
           )}
         </div>
       </main>
+
+      {/* Off-screen printable report */}
+      <div
+        aria-hidden
+        className="fixed -left-[10000px] top-0 pointer-events-none"
+        style={{ width: 794 }}
+      >
+        <PdfReportContent ref={reportRef} role={role} />
+      </div>
     </div>
   );
 }
@@ -431,6 +510,320 @@ function SponsorStat({
       </div>
       <div className="mt-2.5 text-xl font-extrabold text-loop-ink">{value}</div>
       <div className="text-xs text-loop-muted">{label}</div>
+    </div>
+  );
+}
+
+const PdfReportContent = forwardRef<HTMLDivElement, { role: string }>(
+  function PdfReportContent({ role }, ref) {
+    const isSponsor = role === "sponsor";
+    const today = new Date().toLocaleDateString("ar-SA", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    return (
+      <div
+        ref={ref}
+        dir="rtl"
+        style={{
+          width: 794,
+          background: "white",
+          fontFamily: "var(--font-cairo), system-ui, sans-serif",
+          color: "#0B1F3D",
+          padding: 0,
+        }}
+      >
+        {/* Cover */}
+        <div
+          style={{
+            background:
+              "linear-gradient(135deg, #163F82 0%, #1E5BB8 50%, #2E8A3D 100%)",
+            color: "white",
+            padding: "56px 48px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <LoopLogo size={56} variant="wordmark-white" />
+            <div style={{ textAlign: "left", fontSize: 12, opacity: 0.9 }}>
+              <div style={{ fontWeight: 700 }}>Loop ESG Report</div>
+              <div>الربع الأول 2026 · Q1 2026</div>
+              <div>{today}</div>
+            </div>
+          </div>
+          <div style={{ marginTop: 60 }}>
+            <div style={{ fontSize: 14, opacity: 0.85, marginBottom: 8 }}>
+              تقرير الاستدامة الفصلي
+            </div>
+            <div style={{ fontSize: 40, fontWeight: 800, lineHeight: 1.1 }}>
+              منظومة Loop لاسترداد الأدوية
+            </div>
+            <div style={{ fontSize: 16, opacity: 0.9, marginTop: 12 }}>
+              {isSponsor ? "نسخة الراعي - شركة سبيمكو" : "نسخة الجهة التنظيمية - هيئة الغذاء والدواء"}
+            </div>
+          </div>
+          <div style={{ marginTop: 40, display: "flex", gap: 24, fontSize: 12 }}>
+            <div>
+              <div style={{ opacity: 0.7 }}>الفترة المشمولة</div>
+              <div style={{ fontWeight: 700, marginTop: 2 }}>يناير - مارس 2026</div>
+            </div>
+            <div>
+              <div style={{ opacity: 0.7 }}>الجهة المُصدِرة</div>
+              <div style={{ fontWeight: 700, marginTop: 2 }}>منصة Loop</div>
+            </div>
+            <div>
+              <div style={{ opacity: 0.7 }}>المعيار</div>
+              <div style={{ fontWeight: 700, marginTop: 2 }}>GRI Standards 2021</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: "40px 48px" }}>
+          <SectionTitle>الملخص التنفيذي</SectionTitle>
+          <p style={{ fontSize: 14, lineHeight: 1.85, color: "#334155", marginTop: 12 }}>
+            خلال الربع الأول من 2026، حقّقت منظومة Loop نموًا متسارعًا في معدلات استرداد
+            الأدوية المنزلية في المملكة العربية السعودية. نجحنا في استرداد <strong>{toArabicDigits("8,420")}</strong> علبة
+            دواء عبر شبكة من <strong>{toArabicDigits(50)}</strong> صيدلية شريكة في الرياض، أسهم ذلك في حماية
+            ما يقارب <strong>{toArabicDigits("1,265")}</strong> لتر من المياه الجوفية من التلوث الدوائي.
+          </p>
+
+          <div style={{ marginTop: 24, display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+            <PdfStat label="إجمالي العلب المستردة" value={toArabicDigits("8,420")} />
+            <PdfStat label="وزن الأدوية المتلفة بأمان" value={`${toArabicDigits(421)} كجم`} />
+            <PdfStat label="مياه جوفية محمية" value={`${toArabicDigits("1,265")} لتر`} />
+            <PdfStat label="صيدليات شريكة" value={toArabicDigits(50)} />
+            <PdfStat label="أسر مستفيدة" value={toArabicDigits("2,800")} />
+            <PdfStat label="نمو ربع/ربع" value={`+${toArabicDigits(192)}٪`} />
+          </div>
+
+          <SectionTitle style={{ marginTop: 36 }}>المحاور الثلاثة - ESG</SectionTitle>
+          <div style={{ marginTop: 16 }}>
+            <PdfPillar
+              tone="#1E5BB8"
+              tag="Environmental — البيئي"
+              value={`${toArabicDigits(421)} كجم`}
+              label="من النفايات الصحية تم التعامل معها بأمان وفق معايير هيئة الغذاء والدواء"
+              points={[
+                `تجنّب وصول ${toArabicDigits("8,420")} علبة دواء إلى شبكة الصرف العام`,
+                `حماية ${toArabicDigits("1,265")} لتر من المياه الجوفية من التلوث الدوائي`,
+                "خفض الانبعاثات المرتبطة بالحرق العشوائي بنسبة تقديرية ٧٢٪",
+              ]}
+            />
+            <PdfPillar
+              tone="#2E8A3D"
+              tag="Social — الاجتماعي"
+              value={toArabicDigits("2,800")}
+              label="أسرة سعودية استفادت من خدمة Loop المجانية في الربع الأول"
+              points={[
+                "حملات توعية عبر ١٥ صيدلية شريكة في أحياء الرياض",
+                "برنامج النقاط حفّز أكثر من ٤٠٪ من المستخدمين على الاسترداد المتكرر",
+                "شراكات مع الهلال الأحمر لتسليم الأدوية المتبرَّع بها",
+              ]}
+            />
+            <PdfPillar
+              tone="#163F82"
+              tag="Governance — الحوكمة"
+              value={`${toArabicDigits(100)}٪`}
+              label="امتثال كامل للوائح هيئة الغذاء والدواء وممارسات GRI 2021"
+              points={[
+                "مراجعة شهرية من الجهة التنظيمية لسجلات الاسترداد",
+                "تتبّع رقمي لكل علبة من نقطة الاستلام إلى نقطة الإتلاف",
+                "تقرير شفاف ربع سنوي للمستخدمين والشركاء والرعاة",
+              ]}
+            />
+          </div>
+
+          <SectionTitle style={{ marginTop: 32 }}>أعلى الأحياء استرداداً</SectionTitle>
+          <div style={{ marginTop: 12 }}>
+            {DISTRICTS.map((d, i) => {
+              const max = DISTRICTS[0].v;
+              const pct = (d.v / max) * 100;
+              return (
+                <div key={d.name} style={{ marginBottom: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                    <strong>
+                      {toArabicDigits(i + 1)}. {d.name}
+                    </strong>
+                    <strong style={{ color: "#1E5BB8" }}>{toArabicDigits(d.v)} علبة</strong>
+                  </div>
+                  <div style={{ height: 14, background: "#F1F5F9", borderRadius: 7, overflow: "hidden" }}>
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${pct}%`,
+                        background: "linear-gradient(to right, #1E5BB8, #3FAE4F)",
+                        borderRadius: 7,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <SectionTitle style={{ marginTop: 32 }}>أداء أعلى الصيدليات الشريكة</SectionTitle>
+          <table
+            style={{
+              width: "100%",
+              marginTop: 12,
+              fontSize: 12,
+              borderCollapse: "collapse",
+              border: "1px solid #E5EAF1",
+              borderRadius: 8,
+              overflow: "hidden",
+            }}
+          >
+            <thead>
+              <tr style={{ background: "#EFF4FB" }}>
+                <th style={{ padding: 10, textAlign: "right", fontWeight: 700 }}>الصيدلية</th>
+                <th style={{ padding: 10, textAlign: "left", fontWeight: 700 }}>عدد العلب</th>
+              </tr>
+            </thead>
+            <tbody>
+              {PHARMACY_PERF.map((p) => (
+                <tr key={p.name} style={{ borderTop: "1px solid #E5EAF1" }}>
+                  <td style={{ padding: 10 }}>{p.name}</td>
+                  <td style={{ padding: 10, textAlign: "left", fontWeight: 700, color: "#1E5BB8" }}>
+                    {toArabicDigits(p.v)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div
+            style={{
+              marginTop: 40,
+              padding: 20,
+              borderRadius: 12,
+              background: "#F0F7F1",
+              border: "1px solid #D9EDDC",
+              display: "flex",
+              gap: 14,
+              alignItems: "flex-start",
+            }}
+          >
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "#3FAE4F",
+                color: "white",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 800,
+                fontSize: 18,
+                flexShrink: 0,
+              }}
+            >
+              ✓
+            </div>
+            <div style={{ fontSize: 12, lineHeight: 1.7 }}>
+              <strong style={{ color: "#216A2D", fontSize: 13 }}>
+                ختم الجهة التنظيمية - هيئة الغذاء والدواء
+              </strong>
+              <div style={{ marginTop: 4, color: "#334155" }}>
+                تم التحقق من بيانات هذا التقرير وفق سجلات منصة Loop المعتمدة من هيئة الغذاء
+                والدواء السعودية للربع الأول من السنة المالية 2026.
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginTop: 28,
+              borderTop: "1px solid #E5EAF1",
+              paddingTop: 14,
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: 10,
+              color: "#64748B",
+            }}
+          >
+            <span>Loop · loop.sa · contact@loop.sa</span>
+            <span>صفحة ١ من ١ · Q1 2026</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
+
+function SectionTitle({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      style={{
+        fontSize: 18,
+        fontWeight: 800,
+        color: "#0B1F3D",
+        borderRight: "4px solid #1E5BB8",
+        paddingRight: 12,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function PdfStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        padding: 14,
+        background: "#F8FAFC",
+        border: "1px solid #E5EAF1",
+        borderRadius: 12,
+      }}
+    >
+      <div style={{ fontSize: 11, color: "#64748B" }}>{label}</div>
+      <div style={{ marginTop: 4, fontSize: 22, fontWeight: 800, color: "#1E5BB8" }}>{value}</div>
+    </div>
+  );
+}
+
+function PdfPillar({
+  tone,
+  tag,
+  value,
+  label,
+  points,
+}: {
+  tone: string;
+  tag: string;
+  value: string;
+  label: string;
+  points: string[];
+}) {
+  return (
+    <div
+      style={{
+        marginBottom: 14,
+        padding: 18,
+        borderRadius: 14,
+        border: `1px solid ${tone}33`,
+        background: `${tone}08`,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <div style={{ fontWeight: 800, color: tone, fontSize: 13 }}>{tag}</div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: tone }}>{value}</div>
+      </div>
+      <div style={{ marginTop: 6, fontSize: 12, color: "#334155" }}>{label}</div>
+      <ul style={{ marginTop: 10, paddingRight: 18, fontSize: 12, color: "#334155", lineHeight: 1.8 }}>
+        {points.map((p) => (
+          <li key={p}>{p}</li>
+        ))}
+      </ul>
     </div>
   );
 }

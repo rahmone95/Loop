@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -38,6 +38,7 @@ export default function AddMedicinePage() {
   const [expiryImage, setExpiryImage] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [aiBadge, setAiBadge] = useState(false);
+  const lastAnalyzedRef = useRef<string>("");
 
   const [name, setName] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
@@ -63,30 +64,50 @@ export default function AddMedicinePage() {
     };
   }
 
-  async function runAi() {
+  useEffect(() => {
     if (!boxImage || !expiryImage) return;
-    setScanning(true);
-    try {
-      const res = await fetch("/api/analyze-medicine", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          boxImage: boxImage.split(",")[1],
-          expiryImage: expiryImage.split(",")[1],
-          boxMediaType: "image/jpeg",
-          expiryMediaType: "image/jpeg",
-        }),
-      });
-      const data = await res.json();
-      setName(data.name || "");
-      setExpiryDate(data.expiryDate || "");
-      setAiBadge(true);
-    } catch {
-      toast.error("تعذّر التحليل، أكمل يدويًا");
-    } finally {
-      setScanning(false);
-    }
-  }
+    const sig = `${boxImage.length}-${expiryImage.length}`;
+    if (lastAnalyzedRef.current === sig) return;
+    lastAnalyzedRef.current = sig;
+
+    let cancelled = false;
+    (async () => {
+      setScanning(true);
+      setAiBadge(false);
+      try {
+        const inferType = (s: string): "image/jpeg" | "image/png" | "image/webp" => {
+          if (s.startsWith("data:image/png")) return "image/png";
+          if (s.startsWith("data:image/webp")) return "image/webp";
+          return "image/jpeg";
+        };
+        const res = await fetch("/api/analyze-medicine", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            boxImage: boxImage.split(",")[1],
+            expiryImage: expiryImage.split(",")[1],
+            boxMediaType: inferType(boxImage),
+            expiryMediaType: inferType(expiryImage),
+          }),
+        });
+        if (!res.ok) throw new Error("api");
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.name) setName(data.name);
+        if (data.expiryDate) setExpiryDate(data.expiryDate);
+        setAiBadge(true);
+        toast.success("تم استخراج بيانات الدواء تلقائيًا");
+      } catch {
+        if (!cancelled) toast.error("تعذّر التحليل، أكمل يدويًا");
+      } finally {
+        if (!cancelled) setScanning(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [boxImage, expiryImage]);
 
   function onSave() {
     if (!name.trim() || !expiryDate) {
@@ -130,10 +151,7 @@ export default function AddMedicinePage() {
           accept="image/*"
           capture="environment"
           className="hidden"
-          onChange={pickFile((s) => {
-            setBoxImage(s);
-            if (expiryImage) setTimeout(runAi, 100);
-          })}
+          onChange={pickFile(setBoxImage)}
         />
         <input
           ref={expRef}
@@ -141,10 +159,7 @@ export default function AddMedicinePage() {
           accept="image/*"
           capture="environment"
           className="hidden"
-          onChange={pickFile((s) => {
-            setExpiryImage(s);
-            if (boxImage) setTimeout(runAi, 100);
-          })}
+          onChange={pickFile(setExpiryImage)}
         />
 
         <div className="rounded-2xl bg-loop-surface-tinted border border-loop-green-100 p-3.5 flex items-start gap-3">
