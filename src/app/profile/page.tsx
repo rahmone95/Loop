@@ -16,7 +16,9 @@ import {
   Building2,
   ShieldCheck,
   X,
+  Zap,
 } from "lucide-react";
+import { toast } from "sonner";
 import { ScreenHeader } from "@/components/screen-header";
 import { PageShell } from "@/components/page-shell";
 import { BottomNav } from "@/components/bottom-nav";
@@ -94,7 +96,7 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      <section className="px-4 mt-5">
+      <section className="px-4 mt-5 space-y-3">
         <Button
           variant="outline"
           size="lg"
@@ -104,6 +106,23 @@ export default function ProfilePage() {
         >
           <Users className="size-5" />
           تبديل العرض (للجنة)
+        </Button>
+        <Button
+          variant="secondary"
+          size="lg"
+          width="full"
+          onClick={() => {
+            toast("🚨 بنادول إكسترا منتهي اليوم — لا تستخدمه. سلّمه عبر Loop", {
+              duration: 6000,
+              action: {
+                label: "افتح الخزانة",
+                onClick: () => router.push("/cabinet"),
+              },
+            });
+          }}
+        >
+          <Zap className="size-5" />
+          محاكاة تنبيه (للعرض)
         </Button>
       </section>
 

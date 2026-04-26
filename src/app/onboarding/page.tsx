@@ -16,22 +16,28 @@ interface Slide {
 
 const SLIDES: Slide[] = [
   {
-    illustration: <DrawerIllustration />,
-    title: "أدويتك المنسية لها قيمة",
+    illustration: <CabinetIllustration />,
+    title: "خزانة دوائك الذكية",
     subtitle:
-      "٨ من كل ١٠ أدوية في البيوت السعودية تنتهي في القمامة. خلّها تصير أثرًا إيجابيًا.",
+      "احفظ كل أدوية أسرتك في مكان واحد، صور وانسَ — Loop يتذكر لك.",
+  },
+  {
+    illustration: <AlertIllustration />,
+    title: "تنبيهات تحمي عائلتك",
+    subtitle:
+      "نذكّرك قبل انتهاء صلاحية أي دواء، حتى لا يأخذ والداك دواءً منتهيًا بالخطأ.",
   },
   {
     illustration: <PharmacyIllustration />,
-    title: "سلّم في أقرب صيدلية",
+    title: "تخلّص آمن من الأدوية المنتهية",
     subtitle:
-      "شبكة من الصيدليات الشريكة في الرياض، فيها صناديق Loop الذكية لاستلام أدويتك بسهولة.",
+      "عند انتهاء صلاحية الدواء، Loop يوجّهك لأقرب صيدلية شريكة لتسليمه بأمان.",
   },
   {
     illustration: <RewardsIllustration />,
-    title: "احصل على نقاط ومكافآت",
+    title: "اربح نقاط ومكافآت",
     subtitle:
-      "كل علبة تسلّمها تكسبك نقاط Loop، تستبدلها بكوبونات خصم في الصيدليات الشريكة.",
+      "كل دواء تسلّمه يكسبك نقاط Loop، تستبدلها بكوبونات في الصيدليات الشريكة.",
   },
 ];
 
@@ -122,17 +128,34 @@ export default function OnboardingPage() {
   );
 }
 
-function DrawerIllustration() {
+function CabinetIllustration() {
   return (
     <svg viewBox="0 0 200 200" className="w-40 h-40" fill="none">
-      <rect x="36" y="60" width="128" height="100" rx="14" fill="white" stroke="#1E5BB8" strokeWidth="3" />
-      <rect x="36" y="60" width="128" height="40" rx="14" fill="#EFF4FB" stroke="#1E5BB8" strokeWidth="3" />
-      <circle cx="100" cy="80" r="3" fill="#1E5BB8" />
-      <rect x="56" y="112" width="36" height="20" rx="10" fill="#3FAE4F" />
-      <rect x="98" y="116" width="28" height="14" rx="7" fill="#1E5BB8" opacity="0.7" />
-      <rect x="132" y="110" width="22" height="22" rx="6" fill="#5BC75A" opacity="0.8" />
-      <rect x="56" y="138" width="48" height="16" rx="8" fill="#DCE7F7" />
-      <rect x="110" y="138" width="44" height="16" rx="8" fill="#D9EDDC" />
+      <rect x="40" y="44" width="120" height="120" rx="14" fill="white" stroke="#1E5BB8" strokeWidth="3" />
+      <line x1="40" y1="86" x2="160" y2="86" stroke="#1E5BB8" strokeWidth="2" />
+      <line x1="40" y1="124" x2="160" y2="124" stroke="#1E5BB8" strokeWidth="2" />
+      <line x1="100" y1="44" x2="100" y2="164" stroke="#1E5BB8" strokeWidth="2" opacity="0.4" />
+      <rect x="52" y="56" width="34" height="20" rx="10" fill="#3FAE4F" />
+      <rect x="114" y="58" width="32" height="16" rx="8" fill="#1E5BB8" opacity="0.7" />
+      <rect x="52" y="96" width="32" height="18" rx="9" fill="#FCD34D" />
+      <rect x="114" y="96" width="32" height="18" rx="9" fill="#5BC75A" opacity="0.85" />
+      <rect x="52" y="134" width="32" height="20" rx="6" fill="#DCE7F7" />
+      <rect x="114" y="134" width="32" height="20" rx="6" fill="#D9EDDC" />
+    </svg>
+  );
+}
+
+function AlertIllustration() {
+  return (
+    <svg viewBox="0 0 200 200" className="w-40 h-40" fill="none">
+      <rect x="48" y="60" width="104" height="100" rx="14" fill="white" stroke="#1E5BB8" strokeWidth="3" />
+      <rect x="48" y="60" width="104" height="32" rx="14" fill="#EFF4FB" />
+      <circle cx="68" cy="76" r="3" fill="#94A3B8" />
+      <circle cx="84" cy="76" r="3" fill="#94A3B8" />
+      <rect x="60" y="106" width="80" height="10" rx="5" fill="#DCE7F7" />
+      <rect x="60" y="124" width="60" height="10" rx="5" fill="#DCE7F7" />
+      <circle cx="148" cy="50" r="22" fill="#FCD34D" stroke="#92400E" strokeWidth="3" />
+      <text x="148" y="58" textAnchor="middle" fontSize="22" fontWeight="800" fill="#92400E">!</text>
     </svg>
   );
 }

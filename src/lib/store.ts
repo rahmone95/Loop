@@ -15,14 +15,26 @@ import {
 } from "firebase/firestore";
 import { getFirebase } from "./firebase";
 
-export type MedicineStatus = "expired" | "nearExpiry" | "unused";
+export type MedicineStatus = "expired" | "nearExpiry" | "valid" | "unused";
+
+export interface NotificationPrefs {
+  before30: boolean;
+  before7: boolean;
+  onDay: boolean;
+  daily: boolean;
+}
 
 export interface Medicine {
   id: string;
   name: string;
   expiryDate: string;
+  purchaseDate?: string;
   status: MedicineStatus;
   notes?: string;
+  forWhom?: string;
+  photoUrl?: string | null;
+  expiryPhotoUrl?: string | null;
+  notifications?: NotificationPrefs;
   createdAt?: string;
   delivered?: boolean;
 }
@@ -44,6 +56,19 @@ export interface RedeemedReward {
   at: string;
 }
 
+export type AppNotificationType = "expired" | "nearExpiry" | "reward" | "info";
+
+export interface AppNotification {
+  id: string;
+  type: AppNotificationType;
+  icon: string;
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
+  medicineId?: string;
+}
+
 export type Mode = "demo" | "live";
 
 export interface AppState {
@@ -61,12 +86,20 @@ export interface AppState {
   medicines: Medicine[];
   history: ActivityItem[];
   rewards: RedeemedReward[];
+  notifications: AppNotification[];
   role: "user" | "pharmacy" | "admin";
   mode: Mode;
 }
 
 const STORAGE_KEY = "loop-app-state";
 const MODE_KEY = "loop-app-mode";
+
+const DEFAULT_NOTIFS: NotificationPrefs = {
+  before30: true,
+  before7: true,
+  onDay: true,
+  daily: false,
+};
 
 const DEMO_INITIAL: AppState = {
   user: {
@@ -85,29 +118,89 @@ const DEMO_INITIAL: AppState = {
       id: "m_001",
       name: "بنادول إكسترا ٥٠٠ ملغ",
       expiryDate: "2025-08-15",
+      purchaseDate: "2024-02-10",
       status: "expired",
       notes: "متبقي ٨ حبات",
+      photoUrl: null,
+      forWhom: "عام",
+      notifications: DEFAULT_NOTIFS,
     },
     {
       id: "m_002",
       name: "أوجمنتين ٦٢٥ ملغ",
-      expiryDate: "2026-06-20",
+      expiryDate: "2026-05-20",
+      purchaseDate: "2025-11-15",
       status: "nearExpiry",
       notes: "كورس مضاد حيوي لم يكتمل",
+      photoUrl: null,
+      forWhom: "الوالدة",
+      notifications: DEFAULT_NOTIFS,
     },
     {
       id: "m_003",
-      name: "فولتارين جل",
-      expiryDate: "2024-12-10",
-      status: "expired",
-      notes: "",
+      name: "كونكور ٥ ملغ",
+      expiryDate: "2026-05-15",
+      purchaseDate: "2025-08-01",
+      status: "nearExpiry",
+      notes: "دواء ضغط الوالد",
+      photoUrl: null,
+      forWhom: "الوالد",
+      notifications: DEFAULT_NOTIFS,
     },
     {
       id: "m_004",
+      name: "فولتارين جل",
+      expiryDate: "2026-05-25",
+      purchaseDate: "2025-09-10",
+      status: "nearExpiry",
+      notes: "",
+      photoUrl: null,
+      forWhom: "عام",
+      notifications: DEFAULT_NOTIFS,
+    },
+    {
+      id: "m_005",
       name: "كلاريتين ١٠ ملغ",
       expiryDate: "2027-03-01",
-      status: "unused",
-      notes: "تم تغيير الدواء بوصفة جديدة",
+      purchaseDate: "2026-01-15",
+      status: "valid",
+      notes: "علاج حساسية موسمية",
+      photoUrl: null,
+      forWhom: "عام",
+      notifications: DEFAULT_NOTIFS,
+    },
+    {
+      id: "m_006",
+      name: "جلوكوفاج ٥٠٠ ملغ",
+      expiryDate: "2027-08-10",
+      purchaseDate: "2026-02-01",
+      status: "valid",
+      notes: "علاج السكر للوالد",
+      photoUrl: null,
+      forWhom: "الوالد",
+      notifications: DEFAULT_NOTIFS,
+    },
+    {
+      id: "m_007",
+      name: "أسبرين ١٠٠ ملغ",
+      expiryDate: "2027-12-20",
+      purchaseDate: "2026-03-01",
+      status: "valid",
+      notes: "",
+      photoUrl: null,
+      forWhom: "الوالد",
+      notifications: DEFAULT_NOTIFS,
+    },
+    {
+      id: "m_008",
+      name: "فيتامين د ٥٠٠٠٠",
+      expiryDate: "2028-01-15",
+      purchaseDate: "2026-04-01",
+      status: "valid",
+      notes: "حبة أسبوعيًا",
+      photoUrl: null,
+      forWhom: "الوالدة",
+      notifications: DEFAULT_NOTIFS,
     },
   ],
   history: [
@@ -137,6 +230,56 @@ const DEMO_INITIAL: AppState = {
     },
   ],
   rewards: [],
+  notifications: [
+    {
+      id: "n_001",
+      type: "expired",
+      icon: "🚨",
+      title: "دواء منتهي الصلاحية",
+      message: "بنادول إكسترا ٥٠٠ ملغ انتهى منذ ١٥ يومًا. سلّمه عبر Loop لتجنب الأخطار.",
+      time: "اليوم، ٩:٠٠ ص",
+      read: false,
+      medicineId: "m_001",
+    },
+    {
+      id: "n_002",
+      type: "nearExpiry",
+      icon: "⏰",
+      title: "اقتراب انتهاء صلاحية",
+      message: "أوجمنتين ٦٢٥ ملغ ينتهي بعد ١٢ يومًا. استخدمه أو سلّمه عبر Loop.",
+      time: "أمس، ٢:٣٠ م",
+      read: false,
+      medicineId: "m_002",
+    },
+    {
+      id: "n_003",
+      type: "nearExpiry",
+      icon: "⏰",
+      title: "اقتراب انتهاء صلاحية",
+      message: "كونكور ٥ ملغ (الوالد) ينتهي بعد ١٧ يومًا.",
+      time: "قبل يومين",
+      read: true,
+      medicineId: "m_003",
+    },
+    {
+      id: "n_004",
+      type: "reward",
+      icon: "🎉",
+      title: "تم استلام أدويتك بنجاح",
+      message: "تم تسليم ٣ علب في صيدلية النهدي. حصلت على ٣٠ نقطة Loop.",
+      time: "قبل ٣ أيام",
+      read: true,
+    },
+    {
+      id: "n_005",
+      type: "info",
+      icon: "💡",
+      title: "نصيحة صحية",
+      message: "احفظ أدويتك في مكان جاف وبارد بعيدًا عن متناول الأطفال.",
+      time: "قبل أسبوع",
+      read: true,
+    },
+  ],
   role: "user",
   mode: "demo",
 };
@@ -157,9 +300,26 @@ function buildLiveInitial(uid: string, name?: string): AppState {
     medicines: [],
     history: [],
     rewards: [],
+    notifications: [],
     role: "user",
     mode: "live",
   };
+}
+
+export function computeStatus(expiryDate: string): "expired" | "nearExpiry" | "valid" {
+  const exp = new Date(expiryDate).getTime();
+  if (Number.isNaN(exp)) return "valid";
+  const now = Date.now();
+  const days = Math.floor((exp - now) / (1000 * 60 * 60 * 24));
+  if (days < 0) return "expired";
+  if (days <= 30) return "nearExpiry";
+  return "valid";
+}
+
+export function daysFromNow(expiryDate: string): number {
+  const exp = new Date(expiryDate).getTime();
+  if (Number.isNaN(exp)) return 0;
+  return Math.floor((exp - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
 export function getMode(): Mode {

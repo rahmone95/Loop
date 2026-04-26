@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Bell,
@@ -13,11 +14,13 @@ import {
   Gift,
   ChevronLeft,
   Sparkles,
+  AlertTriangle,
+  Pill,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
 import { PageShell } from "@/components/page-shell";
-import { useLoopState } from "@/lib/store";
+import { useLoopState, computeStatus, daysFromNow } from "@/lib/store";
 import { toArabicDigits } from "@/lib/arabic";
 
 function timeAgo(iso: string) {
@@ -35,6 +38,17 @@ export default function HomePage() {
   const { state, hydrated } = useLoopState();
   const firstName = state.user.name.split(" ")[0];
 
+  const meds = state.medicines.filter((m) => !m.delivered);
+  const expired = meds.filter((m) => computeStatus(m.expiryDate) === "expired");
+  const nearExpiry = meds.filter((m) => computeStatus(m.expiryDate) === "nearExpiry");
+  const showAlert = expired.length > 0 || nearExpiry.length > 0;
+  const alertHasExpired = expired.length > 0;
+
+  const unreadCount = useMemo(
+    () => (state.notifications || []).filter((n) => !n.read).length,
+    [state.notifications]
+  );
+
   return (
     <PageShell withBottomNav>
       <header className="px-4 pt-6 pb-2 flex items-center justify-between">
@@ -44,13 +58,18 @@ export default function HomePage() {
             {firstName} <span className="inline-block">👋</span>
           </h1>
         </div>
-        <button
+        <Link
+          href="/notifications"
           aria-label="الإشعارات"
           className="relative h-11 w-11 inline-flex items-center justify-center rounded-2xl bg-white border border-loop-border shadow-card hover:bg-loop-surface-soft"
         >
           <Bell className="size-5 text-loop-ink" />
-          <span className="absolute top-2 left-2 h-2 w-2 rounded-full bg-loop-green-500 ring-2 ring-white" />
-        </button>
+          {hydrated && unreadCount > 0 && (
+            <span className="absolute top-1.5 left-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold inline-flex items-center justify-center ring-2 ring-white">
+              {toArabicDigits(unreadCount)}
+            </span>
+          )}
+        </Link>
       </header>
 
       <section className="px-4 mt-4">
@@ -96,6 +115,95 @@ export default function HomePage() {
         </motion.div>
       </section>
 
+      {hydrated && showAlert && (
+        <section className="px-4 mt-4">
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`rounded-3xl border p-4 ${
+              alertHasExpired
+                ? "bg-red-50 border-red-200"
+                : "bg-orange-50 border-orange-200"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`h-10 w-10 rounded-xl text-white inline-flex items-center justify-center shrink-0 ${
+                  alertHasExpired ? "bg-red-500" : "bg-orange-500"
+                }`}
+              >
+                <AlertTriangle className="size-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p
+                  className={`text-sm font-bold ${
+                    alertHasExpired ? "text-red-900" : "text-orange-900"
+                  }`}
+                >
+                  {alertHasExpired ? "🚨 تنبيهات صحية" : "⚠️ انتباه"}
+                </p>
+                <p
+                  className={`mt-1 text-xs ${
+                    alertHasExpired ? "text-red-800" : "text-orange-800"
+                  }`}
+                >
+                  {expired.length > 0 &&
+                    `${toArabicDigits(expired.length)} ${
+                      expired.length === 1 ? "دواء" : "أدوية"
+                    } منتهي الصلاحية`}
+                  {expired.length > 0 && nearExpiry.length > 0 && "، و"}
+                  {nearExpiry.length > 0 &&
+                    `${toArabicDigits(nearExpiry.length)} ${
+                      nearExpiry.length === 1 ? "دواء" : "أدوية"
+                    } قاربت على الانتهاء`}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 space-y-1.5">
+              {[...expired, ...nearExpiry].slice(0, 3).map((m) => {
+                const s = computeStatus(m.expiryDate);
+                const days = daysFromNow(m.expiryDate);
+                return (
+                  <Link
+                    key={m.id}
+                    href={`/cabinet/${m.id}`}
+                    className="flex items-center gap-2 rounded-xl bg-white border border-loop-border p-2.5 hover:shadow-card transition-shadow"
+                  >
+                    <div className="h-8 w-8 rounded-lg bg-loop-surface-soft inline-flex items-center justify-center shrink-0">
+                      <Pill className="size-4 text-loop-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-loop-ink truncate">
+                        {s === "expired" ? "❌" : "⏰"} {m.name}
+                      </p>
+                      <p className="text-[11px] text-loop-muted">
+                        {s === "expired"
+                          ? "منتهي"
+                          : `تبقى ${toArabicDigits(days)} يومًا`}
+                      </p>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+
+            <Button
+              asChild
+              size="sm"
+              variant={alertHasExpired ? "destructive" : "default"}
+              width="full"
+              className="mt-3"
+            >
+              <Link href="/cabinet">
+                عرض الخزانة
+                <ChevronLeft className="size-4" />
+              </Link>
+            </Button>
+          </motion.div>
+        </section>
+      )}
+
       <section className="px-4 mt-4 grid grid-cols-3 gap-3">
         <StatCard
           icon={<Package className="size-5" />}
@@ -121,7 +229,7 @@ export default function HomePage() {
         <Button asChild variant="gradient" size="lg" width="full">
           <Link href="/add-medicine">
             <Plus className="size-5" />
-            أضف دواء جديد
+            أضف دواء للخزانة
           </Link>
         </Button>
         <Button asChild variant="outline" size="lg" width="full">

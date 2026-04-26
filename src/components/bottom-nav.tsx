@@ -6,11 +6,11 @@ import { Home, Pill, MapPin, Gift, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { href: "/home",        label: "الرئيسية",  icon: Home },
-  { href: "/my-medicines",label: "أدويتي",    icon: Pill },
-  { href: "/pharmacies",  label: "الصيدليات", icon: MapPin },
-  { href: "/rewards",     label: "المكافآت",  icon: Gift },
-  { href: "/profile",     label: "حسابي",     icon: User },
+  { href: "/home",       label: "الرئيسية",   icon: Home },
+  { href: "/cabinet",    label: "خزانة دوائي", icon: Pill },
+  { href: "/pharmacies", label: "الصيدليات",  icon: MapPin },
+  { href: "/rewards",    label: "المكافآت",   icon: Gift },
+  { href: "/profile",    label: "حسابي",      icon: User },
 ];
 
 export function BottomNav() {
